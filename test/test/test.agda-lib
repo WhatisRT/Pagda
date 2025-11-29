@@ -1,0 +1,6 @@
+name: test
+depend: standard-library
+        standard-library-meta
+        lib
+include: .
+flags: --safe

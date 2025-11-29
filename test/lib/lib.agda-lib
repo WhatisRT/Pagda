@@ -1,0 +1,5 @@
+name: lib
+depend: standard-library
+        standard-library-meta
+include: .
+flags: --safe
