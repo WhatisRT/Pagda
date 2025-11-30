@@ -59,19 +59,24 @@ def onInit(args):
 
     template_dir = Path(__file__).parents[0] / "template"
     os.makedirs(args.project_root, exist_ok=True)
+    subst = lambda content: re.sub("example", args.project_name, content)
+    id = lambda x: x
 
     copy_transform(os.path.join(template_dir, "flake.nix"),
                    os.path.join(args.project_root, "flake.nix"),
-                   lambda x: x)
+                   id)
 
     copy_transform(os.path.join(template_dir, "pagda.nix"),
                    os.path.join(args.project_root, "pagda.nix"),
-                   lambda x: x)
-        # pagda_content = re.sub(r"agdaPackages", f'agdaPackages = {{ import nixpkgs }};', pagda_content)
+                   subst)
 
-    copy_transform(os.path.join(template_dir, "simple.agda-lib"),
+    copy_transform(os.path.join(template_dir, "example.agda-lib"),
                    os.path.join(args.project_root, f"{args.project_name}.agda-lib"),
-                   lambda x: x)
+                   subst)
+
+    copy_transform(os.path.join(template_dir, "Test.agda"),
+                   os.path.join(args.project_root, "Test.agda"),
+                   id)
 
 def onDebug(args):
     project_root = get_project_root()
