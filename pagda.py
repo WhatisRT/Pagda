@@ -57,10 +57,6 @@ def get_project_root():
 def onInit(args):
     config = get_configuration()
 
-    if not has_nix():
-        print("Nix not found. Please install Nix before proceeding.")
-        return
-
     template_dir = Path(__file__).parents[0] / "template"
     os.makedirs(args.project_root, exist_ok=True)
 
@@ -91,7 +87,7 @@ def get_use_untracked(config):
     elif use_untracked == "false":
         return False
     else:
-        reply = input("Are you using untracked files for this build? [y/n]: ")
+        reply = input("Do you want to use untracked files for this build? [y/n]: ")
         return reply.lower() in ["y", "yes"]
 
 def onBuild(args):
@@ -111,6 +107,10 @@ def onBuild(args):
     subprocess.run(nix_cmd, shell=True, check=True)
 
 def main():
+    if not has_nix():
+        print("Nix not found. Please install Nix before proceeding.")
+        return
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
 

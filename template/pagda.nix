@@ -1,17 +1,17 @@
 { agdaPackages }: with agdaPackages; rec {
 
-  simple-library = mkDerivation {
-    pname = "simple";
+  example = mkDerivation {
+    pname = "example";
     version = "0.1";
     src = ./.;
     meta = { };
-    libraryFile = "simple.agda-lib";
+    libraryFile = "example.agda-lib";
     buildInputs = [
       standard-library
       standard-library-classes
       standard-library-meta
-      abstract-set-theory
     ];
   };
-  default = simple-library;
+
+  default = example;
 }
