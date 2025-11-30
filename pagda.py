@@ -95,10 +95,7 @@ def get_use_untracked(config):
         reply = input("Do you want to use untracked files for this build? [y/n]: ")
         return reply.lower() in ["y", "yes"]
 
-def onBuild(args):
-    project_root = get_project_root()
-    config = get_configuration()
-
+def build_derivation(config, args):
     prefix = ""
 
     if has_uncommitted_files():
@@ -107,9 +104,12 @@ def onBuild(args):
         if use_untracked:
             prefix = "path:"
 
-    nix_cmd = f"nix build {prefix}.#{args.derivation}"
+    return f"{prefix}.#{args.derivation}"
 
-    subprocess.run(nix_cmd, shell=True, check=True)
+def run_nix(cmd, args):
+    config = get_configuration()
+
+    subprocess.run(f"nix {cmd} {build_derivation(config, args)}", shell=True, check=True)
 
 def main():
     if not has_nix():
@@ -126,6 +126,9 @@ def main():
     build_parser = subparsers.add_parser("build")
     build_parser.add_argument("derivation", nargs="?", default="default", help="Derivation name (defaults to 'default')")
 
+    shell_parser = subparsers.add_parser("shell")
+    shell_parser.add_argument("derivation", nargs="?", default="default", help="Derivation name (defaults to 'default')")
+
     build_parser = subparsers.add_parser("debug")
 
     args = parser.parse_args()
@@ -137,7 +140,10 @@ def main():
         onDebug(args)
 
     elif args.command == "build":
-        onBuild(args)
+        run_nix("build", args)
+
+    elif args.command == "shell":
+        run_nix("develop", args)
 
 if __name__ == "__main__":
     main()
