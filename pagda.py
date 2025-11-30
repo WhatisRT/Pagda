@@ -29,33 +29,36 @@ def parse_config(path):
                 config[key] = value
     return config
 
-def get_configuration():
-    config = default_config
-
-    global_config_path = ".pagda"
-    if not os.path.exists(global_config_path):
-        os.makedirs(global_config_path, exist_ok=True)
-
-    project_config_path = Path(".").parent / "pagda.conf"
-    if project_config_path.is_file():
-        config.update(parse_config(project_config_path))
-
-    return config
-
 def get_project_root():
-    candidate = Path("./pagda.nix")
-    root_dir = os.path.abspath(os.curdir)
+    candidate = Path.cwd()
 
     while True:
-        if candidate.is_file():
-            return root_dir
+        if (candidate / "pagda.nix").is_file():
+            return candidate
         elif candidate == Path("/"):
             raise Exception("Unable to find project root.")
         else:
-            root_dir, candidate = os.path.split(root_dir)
+            candidate = candidate.parents[0]
+
+def get_configuration(args):
+    config = default_config
+    root = get_project_root()
+
+    global_config = Path("~/.config/pagda.conf")
+    if global_config.is_file():
+        config.update(parse_config(global_config))
+
+    project_config = root / "pagda.conf"
+    if project_config.is_file():
+        config.update(parse_config(project_config))
+
+    args_config = { "useUntracked": args.useUntracked }
+    config.update((k,v) for k,v in args_config.items() if v is not None)
+
+    return config
 
 def onInit(args):
-    config = get_configuration()
+    config = get_configuration(args)
 
     template_dir = Path(__file__).parents[0] / "template"
     os.makedirs(args.project_root, exist_ok=True)
@@ -79,9 +82,10 @@ def onInit(args):
                    id)
 
 def onDebug(args):
+    print("Args:", args)
     project_root = get_project_root()
     print("Project root:", project_root)
-    config = get_configuration()
+    config = get_configuration(args)
     print("Config:", config)
 
 def get_use_untracked(config):
@@ -107,9 +111,9 @@ def build_derivation(config, args):
     return f"{prefix}.#{args.derivation}"
 
 def run_nix(cmd, args):
-    config = get_configuration()
+    config = get_configuration(args)
 
-    subprocess.run(f"nix {cmd} {build_derivation(config, args)}", shell=True, check=True)
+    subprocess.run(f"nix --experimental-features 'nix-command flakes' {cmd} {build_derivation(config, args)}", shell=True, check=True)
 
 def main():
     if not has_nix():
@@ -117,6 +121,8 @@ def main():
         return
 
     parser = argparse.ArgumentParser()
+    parser.suggest_on_error = True
+    parser.add_argument("--useUntracked", choices=["true", "false", "ask"], help="What to do with files that are untracked by git")
     subparsers = parser.add_subparsers(dest="command")
 
     init_parser = subparsers.add_parser("init")
@@ -129,12 +135,16 @@ def main():
     shell_parser = subparsers.add_parser("shell")
     shell_parser.add_argument("derivation", nargs="?", default="default", help="Derivation name (defaults to 'default')")
 
-    build_parser = subparsers.add_parser("debug")
+    subparsers.add_parser("debug")
+    subparsers.add_parser("help")
 
     args = parser.parse_args()
 
     if args.command == "init":
         onInit(args)
+
+    elif args.command == "help":
+        parser.print_help()
 
     elif args.command == "debug":
         onDebug(args)
