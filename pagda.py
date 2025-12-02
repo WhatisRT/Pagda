@@ -128,15 +128,15 @@ def parser():
     parser.add_argument("--warnUntracked", choices=["true", "false"], help="Print a warning if certain files are not tracked by git")
     subparsers = parser.add_subparsers(dest="command")
 
-    init_parser = subparsers.add_parser("init")
+    init_parser = subparsers.add_parser("init", help="Initialize a new project")
     init_parser.add_argument("project_name", help="Project name")
     init_parser.add_argument("project_root", help="Project root directory")
 
-    build_parser = subparsers.add_parser("build")
-    build_parser.add_argument("derivation", nargs="?", default="default", help="Derivation name (defaults to 'default')")
+    build_parser = subparsers.add_parser("build", help="Build a project")
+    build_parser.add_argument("derivation", nargs="?", default="default", help="Optional target to build")
 
-    shell_parser = subparsers.add_parser("shell")
-    shell_parser.add_argument("derivation", nargs="?", default="default", help="Derivation name (defaults to 'default')")
+    shell_parser = subparsers.add_parser("shell", help="Launch an interactive shell with all the build dependencies, e.g. for running emacs in")
+    shell_parser.add_argument("derivation", nargs="?", default="default", help="Optional target to build")
 
     subparsers.add_parser("debug")
     subparsers.add_parser("help")
