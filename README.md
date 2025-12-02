@@ -1,10 +1,14 @@
 # Pagda, the package manager for Agda
 
-Pagda is a package manager built on top of [agda.nix][https://github.com/input-output-hk/agda.nix]. This means it inherits the nice features of nix, such as:
+Pagda is a package manager built on top of [agda.nix](https://github.com/input-output-hk/agda.nix). This means it inherits the nice features of nix, such as:
 - Reproducable builds
 - Caching
 - Parallel builds
 - etc.
+
+To see the list of supported commands, run `pagda help`.
+
+Note: currently, the only way to run Pagda is by cloning this repository. It'll be packaged at some later point.
 
 ## Configuration options
 
