@@ -1,5 +1,7 @@
+# Warning: only edit this file if you know what you're doing!
+# In this case, consider using `agda.nix` directly.
 {
-  description = "Simple template using agda.nix";
+  description = "Pagda nix template";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
@@ -20,34 +22,30 @@
   outputs =
     inputs@{
       self,
-      nixpkgs,
-      flake-utils,
-      ...
+        nixpkgs,
+        flake-utils,
+        ...
     }:
     let
       inherit (nixpkgs) lib;
     in
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [
-            inputs.agda-nix.overlays.default
-          ];
-        };
+      flake-utils.lib.eachDefaultSystem (
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [
+              inputs.agda-nix.overlays.default
+            ];
+          };
 
-        pagda = import inputs.pagda { agdaPackages = pkgs.agdaPackages; };
-      in
-      {
-        packages = pagda;
-        # devShells.default = pkgs.mkShell {
-        #   packages = [
-        #     (pkgs.agdaPackages.agda.withPackages (
-        #       builtins.filter (p: p ? isAgdaDerivation) simple-library.buildInputs
-        #     ))
-        #   ];
-        # };
-      }
-    );
+          pagda = import inputs.pagda { agdaPackages = pkgs.agdaPackages; };
+        in
+          {
+            packages = pagda // {
+              agda = pkgs.agdaPackages.agda.withPackages
+                (builtins.filter (p: p ? isAgdaDerivation) pagda.default.buildInputs);
+            };
+          }
+      );
 }

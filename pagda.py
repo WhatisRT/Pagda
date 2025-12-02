@@ -117,8 +117,13 @@ def build_derivation(config, args):
 
     return f"{prefix}.#{args.derivation}"
 
-def run_nix(cmd, args, config):
-    subprocess.run(f"nix --experimental-features 'nix-command flakes' {cmd} {build_derivation(config, args)}", shell=True, check=True)
+def run_nix(cmd, args, config, use_derivation=True):
+    if use_derivation:
+        der = build_derivation(config, args)
+    else:
+        der = ""
+
+    subprocess.run(f"nix --experimental-features 'nix-command flakes' {cmd} {der}", shell=True, check=True)
 
 def parser():
 
@@ -134,6 +139,8 @@ def parser():
 
     build_parser = subparsers.add_parser("build", help="Build a project")
     build_parser.add_argument("derivation", nargs="?", default="default", help="Optional target to build")
+
+    build_parser = subparsers.add_parser("gen-agda", help="Generate a symlink to agda with the correct dependencies to build the default package")
 
     shell_parser = subparsers.add_parser("shell", help="Launch an interactive shell with all the build dependencies, e.g. for running emacs in")
     shell_parser.add_argument("derivation", nargs="?", default="default", help="Optional target to build")
@@ -171,6 +178,9 @@ def main():
 
         if args.command == "build":
             run_nix("build", args, config)
+
+        if args.command == "gen-agda":
+            run_nix("build .#agda -o agda", args, config, False)
 
         elif args.command == "shell":
             run_nix("develop", args, config)

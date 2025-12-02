@@ -42,7 +42,10 @@
           pagda = import inputs.pagda { agdaPackages = pkgs.agdaPackages; };
         in
           {
-            packages = pagda;
+            packages = pagda // {
+              agda = pkgs.agdaPackages.agda.withPackages
+                (builtins.filter (p: p ? isAgdaDerivation) pagda.default.buildInputs);
+            };
           }
       );
 }
