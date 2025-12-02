@@ -1,3 +1,5 @@
+# Warning: only edit this file if you know what you're doing!
+# In this case, consider using `agda.nix` directly.
 {
   description = "Pagda nix template";
 
