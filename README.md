@@ -6,6 +6,8 @@ Pagda is a package manager built on top of [agda.nix](https://github.com/input-o
 - Parallel builds
 - etc.
 
+Pagda is also completely compatible with the built-in package management functionality of Agda, so you can add it to existing code bases without breaking the workflow of users that don't use Pagda.
+
 To see the list of supported commands, run `pagda help`.
 
 Note: currently, the only way to run Pagda is by cloning this repository. It'll be packaged at some later point.
