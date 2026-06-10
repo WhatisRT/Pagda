@@ -21,10 +21,25 @@ executable pagda
                     , filepath
                     , directory
                     , process
-                    , text
-                    , regex-tdfa
                     , unordered-containers
 
     default-language: GHC2021
     other-modules:    AgdaLib
                     , Templates
+
+test-suite e2e
+    import:             warnings
+    type:               exitcode-stdio-1.0
+    main-is:            Main.hs
+    hs-source-dirs:     test/e2e
+    build-depends:      base >=4.18 && <5
+                      , bytestring
+                      , directory
+                      , extra
+                      , filepath
+                      , process
+                      , tasty
+                      , tasty-golden
+                      , text
+    build-tool-depends: pagda:pagda
+    default-language:   GHC2021

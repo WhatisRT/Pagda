@@ -1,0 +1,16 @@
+exit code: 0
+=== stdout ===
+=== stderr ===
+=== file: Test.agda ===
+module Test where
+=== file: flake.nix ===
+# dummy flake for testing
+{ }
+=== file: nix-args.txt ===
+--experimental-features nix-command flakes build path:.#default
+=== file: pagda.conf ===
+useUntracked=true;
+warnUntracked=false;
+=== file: pagda.nix ===
+# project root marker used by pagda
+{ agdaPackages }: { }

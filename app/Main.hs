@@ -3,12 +3,12 @@
 module Main (main) where
 
 import Options.Applicative
-import System.Directory (canonicalizePath, createDirectoryIfMissing, doesFileExist, getHomeDirectory, getCurrentDirectory)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, doesFileExist, findExecutable, getHomeDirectory, getCurrentDirectory)
 import System.FilePath (takeDirectory, takeFileName, (</>))
-import System.Process (callProcess, readProcessWithExitCode, readProcess)
-import System.Exit (ExitCode(ExitSuccess))
+import System.Process (callProcess, readProcess)
 import System.IO (hFlush, stdout)
 import Data.Char (toLower)
+import Data.Maybe (isJust)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Control.Exception (catch, IOException)
@@ -89,11 +89,7 @@ configParser = Config
       )
 
 hasNix :: IO Bool
-hasNix = do
-  (exit, _, _) <- readProcessWithExitCode "which" ["nix"] ""
-  case exit of
-    ExitSuccess -> return True
-    _ -> return False
+hasNix = isJust <$> findExecutable "nix"
 
 getUntracked :: IO [String]
 getUntracked = do

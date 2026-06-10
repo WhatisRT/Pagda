@@ -1,0 +1,91 @@
+exit code: 0
+=== stdout ===
+=== stderr ===
+=== file: proj/Test.agda ===
+module Test where
+
+open import Data.Product
+open import Data.List
+open import Tactic.Defaults
+open import Tactic.Derive.DecEq
+
+data Test : Set where
+  t1 t2 t3 : Test
+
+unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])
+=== file: proj/flake.nix ===
+# Warning: only edit this file if you know what you're doing!
+# In this case, consider using `agda.nix` directly.
+{
+  description = "Pagda nix template";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs";
+
+    flake-utils.url = "github:numtide/flake-utils";
+
+    agda-nix = {
+      url = "github:input-output-hk/agda.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pagda = {
+      url = "./pagda.nix";
+      flake = false;
+    };
+  };
+
+  outputs =
+    inputs@{
+      self,
+        nixpkgs,
+        flake-utils,
+        ...
+    }:
+    let
+      inherit (nixpkgs) lib;
+    in
+      flake-utils.lib.eachDefaultSystem (
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [
+              inputs.agda-nix.overlays.default
+            ];
+          };
+
+          pagda = import inputs.pagda { agdaPackages = pkgs.agdaPackages; };
+        in
+          {
+            packages = pagda // {
+              agda = pkgs.agdaPackages.agda.withPackages
+                (builtins.filter (p: p ? isAgdaDerivation) pagda.default.buildInputs);
+            };
+          }
+      );
+}
+=== file: proj/myproj.agda-lib ===
+name: myproj
+depend: standard-library
+        standard-library-classes
+        standard-library-meta
+include: .
+=== file: proj/pagda.nix ===
+{ agdaPackages }: with agdaPackages; rec {
+
+  myproj = mkDerivation {
+    pname = "myproj";
+    version = "0.1";
+    src = ./.;
+    meta = { };
+    libraryFile = "myproj.agda-lib";
+    buildInputs = [
+      standard-library
+      standard-library-classes
+      standard-library-meta
+    ];
+  };
+
+  default = myproj;
+}

@@ -20,3 +20,23 @@ There are three ways to set options for Pagda: a global configuration file, a co
 |------------------|------------------|---------|---------------------------------------------------------|
 | useUntracked     | true, false, ask | ask     | What to do with files that are untracked by git         |
 | useWarnUntracked | true, false      | true    | Print a warning if certain files are not tracked by git |
+
+## Development
+
+Build pagda and run its test suites with nix:
+
+```
+nix build          # build the executable (tests run in the check phase)
+nix flake check    # build and test
+nix develop        # dev shell with ghc, cabal, git
+```
+
+### Testing
+
+End-to-end tests live in `test/e2e`: each case starts from an initial file
+tree, runs a `pagda` command in a sandbox, and compares the exit code,
+output and resulting file tree against a golden manifest. Calls to `nix`
+are intercepted by a stub that records the arguments, so the tests are
+fast, reproducible and need no network. See
+[test/e2e/README.md](test/e2e/README.md) for how to add cases and
+regenerate goldens (`cabal test e2e --test-options=--accept`).
