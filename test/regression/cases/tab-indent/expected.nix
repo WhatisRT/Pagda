@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library }:
 mkDerivation {
   pname = "tabbed";
   version = "0.1";

@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library, agda-stdlib-classes, agda-stdlib-meta, agda-stdlib-utils }:
 mkDerivation {
   pname = "multi";
   version = "0.1";

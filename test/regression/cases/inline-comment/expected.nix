@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library, agda-stdlib-classes }:
 mkDerivation {
   pname = "inline";
   version = "0.1";

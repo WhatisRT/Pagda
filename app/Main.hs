@@ -104,7 +104,7 @@ hasUncommittedFiles = do
 warnAboutUntrackedFiles :: IO ()
 warnAboutUntrackedFiles = do
   untracked <- getUntracked
-  let warns = filter (`elem` ["flake.nix", "flake.lock", "pagda.nix"]) $ map takeFileName untracked
+  let warns = filter (`elem` ["flake.nix", "flake.lock"]) $ map takeFileName untracked
   if null warns
     then return ()
     else putStrLn $ "The following files which are recommended to be part of your repository are untracked:\n  " ++ unwords warns
@@ -116,11 +116,11 @@ getProjectRoot = do
   where
     go :: FilePath -> IO FilePath
     go dir = do
-      exists <- doesFileExist (dir </> "pagda.nix")
+      exists <- doesFileExist (dir </> "flake.nix")
       if exists
         then return dir
         else case takeDirectory dir of
-          parent | parent == dir -> fail "Unable to find project root (no pagda.nix found)"
+          parent | parent == dir -> fail "Unable to find project root (no flake.nix found)"
                  | otherwise -> go parent
 
 parseConfig :: FilePath -> IO (HashMap String String)
@@ -201,7 +201,6 @@ onInit projectName projectRoot = do
   createDirectoryIfMissing True projectRoot
   let subst = substitute "example" projectName
   writeFile (projectRoot </> "flake.nix") flakeNix
-  writeFile (projectRoot </> "pagda.nix") $ subst pagdaNix
   writeFile (projectRoot </> projectName ++ ".agda-lib") $ subst agdaLib
   writeFile (projectRoot </> "Test.agda") testAgda
 

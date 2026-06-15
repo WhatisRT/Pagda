@@ -1,3 +1,4 @@
+{ mkDerivation, foo, bar, baz }:
 mkDerivation {
   pname = "commas";
   version = "0.1";

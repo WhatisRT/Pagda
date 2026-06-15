@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library }:
 mkDerivation {
   pname = "dirname-fallback";
   version = "0.1";

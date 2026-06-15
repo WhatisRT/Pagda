@@ -31,6 +31,28 @@ To pull pagda into a flake / NixOS / home-manager configuration, add it as an in
 }
 ```
 
+### Customizing the build via `pagda.nix`
+
+The `.agda-lib` file governs the library name and everything directly
+relevant to `agda` itself. For things it cannot express, such as
+metadata or special build instructions, add an optional `pagda.nix`
+next to it. It is a function of `agdaPackages` that returns an
+[`overrideAttrs`](https://nixos.org/manual/nixpkgs/stable/#sec-pkg-overrideAttrs)
+function. Here, `gen` refers the package generated from the `.agda-lib`
+file.
+
+```nix
+# pagda.nix
+{ agdaPackages }:
+gen: {
+  # Override the version (it defaults to "0.1").
+  version = "1.2.0";
+
+  # Set package metadata.
+  meta = gen.meta // { description = "My Agda library"; };
+}
+```
+
 ## Configuration options
 
 There are three ways to set options for Pagda: a global configuration file, a configuration file local to the project and command line options. The syntax for command line options is `--<name> <value>` and the syntax for configuration files is `name=value;`, each on a separate line.

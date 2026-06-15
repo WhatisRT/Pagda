@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library, standard-library-classes, standard-library-meta }:
 mkDerivation {
   pname = "baseline";
   version = "0.1";

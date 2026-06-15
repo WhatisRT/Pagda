@@ -1,6 +1,6 @@
 exit code: 1
 === stdout ===
 === stderr ===
-pagda: user error (Unable to find project root (no pagda.nix found))
+pagda: user error (Unable to find project root (no flake.nix found))
 === file: dummy.txt ===
 dummy

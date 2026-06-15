@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library }:
 mkDerivation {
   pname = "dedup";
   version = "0.1";

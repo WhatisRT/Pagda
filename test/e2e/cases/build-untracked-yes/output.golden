@@ -1,7 +1,7 @@
 exit code: 0
 === stdout ===
 The following files which are recommended to be part of your repository are untracked:
-  flake.nix pagda.nix
+  flake.nix
 Do you want to use untracked files for this build? [y/n]: 
 \ no newline at end
 === stderr ===

@@ -6,7 +6,7 @@ module AgdaLib
   ) where
 
 import Data.Char (isDigit)
-import Data.List (nub)
+import Data.List (intercalate, nub)
 import System.FilePath (takeBaseName, takeDirectory, takeFileName)
 import qualified Text.Parsec as Parsec
 
@@ -87,20 +87,23 @@ stripComment ('-':'-':_) = ""
 stripComment (c:cs) = c : stripComment cs
 stripComment "" = ""
 
+-- Emit a callPackage-style function `{ mkDerivation, dep1, ... }: mkDerivation { ... }`.
 agdaLibToNix :: FilePath -> AgdaLib -> String
 agdaLibToNix path lib = unlines $ concat
-  [ ["mkDerivation {"]
+  [ ["{ " ++ intercalate ", " ("mkDerivation" : deps) ++ " }:"]
+  , ["mkDerivation {"]
   , ["  pname = \"" ++ pname ++ "\";"]
   , ["  version = \"0.1\";"]
   , ["  src = ./.;"]
   , ["  meta = { };"]
   , ["  libraryFile = \"" ++ takeFileName path ++ "\";"]
   , ["  buildInputs = ["]
-  , map ((++) "    ") (nub (map stripVersion (agdaLibDeps lib)))
+  , map ((++) "    ") deps
   , ["  ];"]
   , ["}"]
   ]
   where
+    deps = nub (map stripVersion (agdaLibDeps lib))
     -- The name field is optional; fall back to the file name, or to the
     -- directory name for a bare ".agda-lib" file.
     pname = case (agdaLibName lib, takeBaseName path) of

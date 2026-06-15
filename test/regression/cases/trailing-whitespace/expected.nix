@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library }:
 mkDerivation {
   pname = "trailing";
   version = "0.1";

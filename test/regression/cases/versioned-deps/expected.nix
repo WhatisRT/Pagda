@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library, agda-stdlib-classes }:
 mkDerivation {
   pname = "versioned";
   version = "0.1";

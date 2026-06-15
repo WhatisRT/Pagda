@@ -15,9 +15,9 @@ data Test : Set where
 unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])
 === file: proj/flake.nix ===
 # Warning: only edit this file if you know what you're doing!
-# In this case, consider using `agda.nix` directly.
+# To customize the build, prefer the optional pagda.nix escape hatch.
 {
-  description = "Pagda nix template";
+  description = "Pagda project";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
@@ -29,10 +29,7 @@ unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    pagda = {
-      url = "./pagda.nix";
-      flake = false;
-    };
+    pagda.url = "github:WhatisRT/Pagda";
   };
 
   outputs =
@@ -40,11 +37,9 @@ unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])
       self,
         nixpkgs,
         flake-utils,
+        pagda,
         ...
     }:
-    let
-      inherit (nixpkgs) lib;
-    in
       flake-utils.lib.eachDefaultSystem (
         system:
         let
@@ -55,12 +50,23 @@ unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])
             ];
           };
 
-          pagda = import inputs.pagda { agdaPackages = pkgs.agdaPackages; };
+          # The library derivation is derived from the .agda-lib file.
+          # If a pagda.nix exists, it provides an overrideAttrs function
+          # to customize the nix-specific parts of the build.
+          default = pagda.lib.${system}.callAgdaLib2nix {
+            agdaPackages = pkgs.agdaPackages;
+            src = ./.;
+            overrideAttrs =
+              if builtins.pathExists ./pagda.nix
+              then import ./pagda.nix { agdaPackages = pkgs.agdaPackages; }
+              else (_: { });
+          };
         in
           {
-            packages = pagda // {
+            packages = {
+              inherit default;
               agda = pkgs.agdaPackages.agda.withPackages
-                (builtins.filter (p: p ? isAgdaDerivation) pagda.default.buildInputs);
+                (builtins.filter (p: p ? isAgdaDerivation) default.buildInputs);
             };
           }
       );
@@ -71,21 +77,3 @@ depend: standard-library
         standard-library-classes
         standard-library-meta
 include: .
-=== file: proj/pagda.nix ===
-{ agdaPackages }: with agdaPackages; rec {
-
-  myproj = mkDerivation {
-    pname = "myproj";
-    version = "0.1";
-    src = ./.;
-    meta = { };
-    libraryFile = "myproj.agda-lib";
-    buildInputs = [
-      standard-library
-      standard-library-classes
-      standard-library-meta
-    ];
-  };
-
-  default = myproj;
-}

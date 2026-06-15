@@ -1,3 +1,4 @@
+{ mkDerivation, standard-library }:
 mkDerivation {
   pname = "nofinal";
   version = "0.1";

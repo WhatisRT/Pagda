@@ -3,6 +3,6 @@ exit code: 0
 Debug info:
 Project root: $TESTDIR
 === stderr ===
-=== file: pagda.nix ===
+=== file: flake.nix ===
 # project root marker used by pagda
-{ agdaPackages }: { }
+{ }

@@ -37,6 +37,15 @@
         pagda = import ./default.nix { pkgs = final; };
       };
 
+      # callAgdaLib2nix builds an Agda library derivation straight from its
+      # .agda-lib file (the callCabal2nix analogue).
+      lib = forAllSystems (pkgs: {
+        callAgdaLib2nix = import ./nix/callAgdaLib2nix.nix {
+          inherit pkgs;
+          pagda = import ./default.nix { inherit pkgs; };
+        };
+      });
+
       # `nix flake check` builds pagda and runs its test suites,
       # including the end-to-end tests in test/e2e.
       checks = forAllSystems (pkgs: {
