@@ -1,0 +1,79 @@
+exit code: 0
+=== stdout ===
+=== stderr ===
+=== file: Test.agda ===
+module Test where
+
+open import Data.Product
+open import Data.List
+open import Tactic.Defaults
+open import Tactic.Derive.DecEq
+
+data Test : Set where
+  t1 t2 t3 : Test
+
+unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])
+=== file: demo.agda-lib ===
+name: demo
+depend: standard-library
+        standard-library-classes
+        standard-library-meta
+include: .
+=== file: flake.nix ===
+# Warning: only edit this file if you know what you're doing!
+# To customize the build, prefer the optional pagda.nix escape hatch.
+{
+  description = "Pagda project";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs";
+
+    flake-utils.url = "github:numtide/flake-utils";
+
+    agda-nix = {
+      url = "github:input-output-hk/agda.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pagda.url = "github:WhatisRT/Pagda";
+  };
+
+  outputs =
+    inputs@{
+      self,
+        nixpkgs,
+        flake-utils,
+        pagda,
+        ...
+    }:
+      flake-utils.lib.eachDefaultSystem (
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [
+              inputs.agda-nix.overlays.default
+            ];
+          };
+
+          # The library derivation is derived from the .agda-lib file.
+          # If a pagda.nix exists, it provides an overrideAttrs function
+          # to customize the nix-specific parts of the build.
+          default = pagda.lib.${system}.callAgdaLib2nix {
+            agdaPackages = pkgs.agdaPackages;
+            src = ./.;
+            overrideAttrs =
+              if builtins.pathExists ./pagda.nix
+              then import ./pagda.nix { agdaPackages = pkgs.agdaPackages; }
+              else (_: { });
+          };
+        in
+          {
+            packages = {
+              inherit default;
+              agda = pkgs.agdaPackages.agda.withPackages
+                (builtins.filter (p: p ? isAgdaDerivation) default.buildInputs);
+            };
+          }
+      );
+}

@@ -8,6 +8,7 @@ import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Process (callProcess, readProcess)
 import System.IO (hFlush, stdout)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
+import Control.Monad (when)
 import Data.Char (toLower)
 import Data.Maybe (isJust)
 import Data.HashMap.Strict (HashMap)
@@ -25,7 +26,7 @@ data Config = Config
   }
 
 data PagdaOpts
-  = Init String FilePath
+  = Init (Maybe String) (Maybe FilePath) Bool
   | Build (Maybe String)
   | GenAgda
   | Shell (Maybe String)
@@ -57,8 +58,9 @@ pagdaParser cfg = subparser
   )
   where
     initCmd = Init
-      <$> argument str (metavar "PROJECT_NAME" <> help "Project name")
-      <*> argument str (metavar "PROJECT_ROOT" <> help "Project root directory")
+      <$> optional (argument str (metavar "[PROJECT_NAME]" <> help "Project name (prompted if omitted)"))
+      <*> optional (argument str (metavar "[PROJECT_ROOT]" <> help "Project root directory (prompted if omitted)"))
+      <*> switch (long "here" <> help "Initialize in the current directory")
     buildArg = optional $ argument str (metavar "[DERIVATION]" <> help "Optional target (default: default)")
     agdaLibArg = argument str (metavar "AGDA_LIB_FILE" <> help "Path to .agda-lib file")
     -- forwardOptions (above) lets unrecognized flags through to here, so they
@@ -208,8 +210,32 @@ runNix cmd mderiv cfg useDerivation = do
   let args = ["--experimental-features", "nix-command flakes", cmd] ++ words der
   callProcess "nix" args
 
-onInit :: String -> FilePath -> IO ()
-onInit projectName projectRoot = do
+-- | Prompt for a value, re-asking until the answer is non-empty.
+promptRequired :: String -> IO String
+promptRequired label = do
+  putStr (label ++ ": ")
+  System.IO.hFlush stdout
+  answer <- getLine
+  if null answer then promptRequired label else return answer
+
+-- | Prompt for a value, falling back to a default on an empty answer.
+promptDefault :: String -> String -> IO String
+promptDefault label def = do
+  putStr (label ++ " [" ++ def ++ "]: ")
+  System.IO.hFlush stdout
+  answer <- getLine
+  return $ if null answer then def else answer
+
+-- | Missing name/root are prompted for interactively; --here uses the current
+-- directory as the root (and may not be combined with an explicit root).
+onInit :: Maybe String -> Maybe FilePath -> Bool -> IO ()
+onInit mname mroot here = do
+  when (here && isJust mroot) $
+    fail "init: PROJECT_ROOT cannot be combined with --here"
+  projectName <- maybe (promptRequired "Project name") return mname
+  projectRoot <- if here
+    then getCurrentDirectory
+    else maybe (promptDefault "Project root" projectName) return mroot
   createDirectoryIfMissing True projectRoot
   let subst = substitute "example" projectName
   writeFile (projectRoot </> "flake.nix") flakeNix
@@ -266,7 +292,7 @@ main = do
   (cfg, opts) <- customExecParser (prefs showHelpOnEmpty) parserInfo
 
   case opts of
-    Init name root -> onInit name root
+    Init name root here -> onInit name root here
 
     AgdaLib2Nix path -> onAgdaLib2Nix path
 
