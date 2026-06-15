@@ -1,5 +1,6 @@
 name: test
 depend: standard-library
+        standard-library-classes
         standard-library-meta
         lib
 include: .

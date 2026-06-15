@@ -7,6 +7,7 @@ import System.Directory (canonicalizePath, createDirectoryIfMissing, doesFileExi
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Process (callProcess, readProcess)
 import System.IO (hFlush, stdout)
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Data.Char (toLower)
 import Data.Maybe (isJust)
 import Data.HashMap.Strict (HashMap)
@@ -230,6 +231,7 @@ onRegenerate = do
 
 main :: IO ()
 main = do
+  setLocaleEncoding utf8
   (cfg, opts) <- customExecParser (prefs showHelpOnEmpty) parserInfo
 
   case opts of

@@ -15,7 +15,7 @@ To see the list of supported commands, run `pagda help`.
 At the moment, the only supported installation method is via Nix. With flakes enabled you can run:
 
 ```
-nix profile install github:WhatisRT/Pagda  # install pagda onto your PATH
+nix profile add github:WhatisRT/Pagda  # install pagda onto your PATH
 ```
 
 This builds pagda from source on first use. A prebuilt binary cache may be added later.

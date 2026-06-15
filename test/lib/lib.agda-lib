@@ -1,5 +1,6 @@
 name: lib
 depend: standard-library
+        standard-library-classes
         standard-library-meta
 include: .
 flags: --safe
