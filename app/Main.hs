@@ -29,6 +29,7 @@ data PagdaOpts
   | GenAgda
   | Shell (Maybe String)
   | AgdaLib2Nix FilePath
+  | Regenerate
   | Debug
   deriving Show
 
@@ -46,6 +47,8 @@ pagdaParser cfg = subparser
       (progDesc "Debug information"))
   <> command "agdaLib2nix" (info (AgdaLib2Nix <$> agdaLibArg <**> helper)
       (progDesc "Generate a nix derivation based on an agda-lib file"))
+  <> command "regenerate" (info (pure Regenerate <**> helper)
+      (progDesc "Regenerate flake.nix from the current template"))
   )
   where
     initCmd = Init
@@ -216,6 +219,15 @@ onAgdaLib2Nix path = do
   absPath <- canonicalizePath path
   putStrLn $ agdaLibToNix absPath lib
 
+-- | Rewrite flake.nix in the project root from the current template. flake.nix
+-- is a generated artifact, so this lets a project pick up template changes.
+onRegenerate :: IO ()
+onRegenerate = do
+  root <- getProjectRoot
+  let path = root </> "flake.nix"
+  writeFile path flakeNix
+  putStrLn $ "Regenerated " ++ path
+
 main :: IO ()
 main = do
   (cfg, opts) <- customExecParser (prefs showHelpOnEmpty) parserInfo
@@ -224,6 +236,8 @@ main = do
     Init name root -> onInit name root
 
     AgdaLib2Nix path -> onAgdaLib2Nix path
+
+    Regenerate -> onRegenerate
 
     Debug -> onDebug
 
