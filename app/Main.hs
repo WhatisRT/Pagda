@@ -211,12 +211,10 @@ buildDerivation cfg mderiv = do
     else return ""
   return $ prefix ++ ".#" ++ maybe "default" id mderiv
 
-runNix :: String -> Maybe String -> Config -> Bool -> IO ()
-runNix cmd mderiv cfg useDerivation = do
-  der <- if useDerivation
-    then buildDerivation cfg mderiv
-    else return ""
-  let args = ["--experimental-features", "nix-command flakes", cmd] ++ words der
+runNix :: String -> Maybe String -> Config -> IO ()
+runNix cmd mderiv cfg = do
+  der <- buildDerivation cfg mderiv
+  let args = ["--experimental-features", "nix-command flakes", cmd, der]
   callProcess "nix" args
 
 -- | Prompt for a value, re-asking until the answer is non-empty.
@@ -336,8 +334,8 @@ main = do
             else return ()
 
           case opts of
-            Build mderiv -> runNix "build" mderiv cfg' True
-            GenAgda -> runNix "build" (Just ".#agda") cfg' False
-            Shell mderiv -> runNix "develop" mderiv cfg' True
+            Build mderiv -> runNix "build" mderiv cfg'
+            GenAgda -> runNix "build" (Just "agda") cfg'
+            Shell mderiv -> runNix "develop" mderiv cfg'
             Check agdaArgs -> onCheck cfg' agdaArgs
-            Doc -> runNix "build" (Just "docs") cfg' True
+            Doc -> runNix "build" (Just "docs") cfg'

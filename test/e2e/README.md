@@ -69,10 +69,3 @@ Without cabal, the runner can be pointed at any pagda binary:
 PAGDA_BIN=/path/to/pagda ./e2e [--accept] [-p PATTERN]
 ```
 
-## Known quirks captured by the goldens
-
-- `cases/gen-agda`: `pagda gen-agda` currently invokes `nix build` with
-  **no** installable argument (the `.#agda` target is dropped by
-  `runNix` when `useDerivation` is false), so nix builds `.#default`
-  instead of the agda wrapper. The golden documents the current
-  behaviour; update it when the bug is fixed.
