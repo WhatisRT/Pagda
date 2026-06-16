@@ -33,6 +33,7 @@ data PagdaOpts
   | AgdaLib2Nix FilePath
   | Regenerate
   | Check [String]
+  | Doc
   | Debug
   deriving Show
 
@@ -55,6 +56,8 @@ pagdaParser cfg = subparser
   <> command "check" (info (Check <$> checkArgs <**> helper)
       (progDesc "Typecheck the project (or a file) with agda; extra arguments are passed to agda"
         <> forwardOptions))
+  <> command "doc" (info (pure Doc <**> helper)
+      (progDesc "Build browsable HTML documentation for the project"))
   )
   where
     initCmd = Init
@@ -315,3 +318,4 @@ main = do
             GenAgda -> runNix "build" (Just ".#agda") cfg' False
             Shell mderiv -> runNix "develop" mderiv cfg' True
             Check agdaArgs -> onCheck cfg' agdaArgs
+            Doc -> runNix "build" (Just "docs") cfg' True

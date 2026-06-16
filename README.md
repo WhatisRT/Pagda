@@ -73,6 +73,14 @@ with two optional fields:
 }
 ```
 
+## Documentation
+
+`pagda doc` builds documentation for the project. It is exposed as the
+`docs` flake package, so `nix build .#docs` works too.
+
+By default, it simply uses Agda's `agda --html`. However, the backend
+is pluggable via `pagda.nix`'s `docs` field.
+
 ## Configuration options
 
 There are three ways to set options for Pagda: a global configuration file, a configuration file local to the project and command line options. The syntax for command line options is `--<name> <value>` and the syntax for configuration files is `name=value;`, each on a separate line.

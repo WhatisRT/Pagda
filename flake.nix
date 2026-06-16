@@ -44,6 +44,9 @@
           inherit pkgs;
           pagda = import ./default.nix { inherit pkgs; };
         };
+        docBackends = {
+          html = import ./nix/docBackends/html.nix { inherit pkgs; };
+        };
       });
 
       # `nix flake check` builds pagda and runs its test suites,
