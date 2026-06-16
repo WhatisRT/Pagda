@@ -93,6 +93,18 @@ docs = pagda.docBackends.enhancedHtml { offline = false; }; # optimized for serv
 docs = pagda.docBackends.html;                              # plain agda --html
 ```
 
+## Continuous integration
+
+`pagda gen-ci` writes a small `.github/workflows/ci.yml` that calls pagda's
+[reusable workflow](.github/workflows/agda-ci.yml) to type-check the
+library (`nix build .#default`) on every push and pull request.
+
+Pass `--pages` to also build the docs and deploy them to GitHub Pages on the
+default branch (set the repository's Pages source to "GitHub Actions").
+
+Pass `--cache` to cache the Nix store via the GitHub Actions cache, so
+reruns don't rebuild pagda/Agda from source.
+
 ## Configuration options
 
 There are three ways to set options for Pagda: a global configuration file, a configuration file local to the project and command line options. The syntax for command line options is `--<name> <value>` and the syntax for configuration files is `name=value;`, each on a separate line.

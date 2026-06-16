@@ -34,6 +34,7 @@ data PagdaOpts
   | Regenerate
   | Check [String]
   | Doc
+  | GenCi Bool Bool
   | Debug
   deriving Show
 
@@ -58,6 +59,11 @@ pagdaParser cfg = subparser
         <> forwardOptions))
   <> command "doc" (info (pure Doc <**> helper)
       (progDesc "Build browsable HTML documentation for the project"))
+  <> command "gen-ci" (info (GenCi
+        <$> switch (long "pages" <> help "Also build the docs and deploy them to GitHub Pages")
+        <*> switch (long "cache" <> help "Cache the Nix store via the GitHub Actions cache")
+        <**> helper)
+      (progDesc "Write a GitHub Actions CI workflow (.github/workflows/ci.yml)"))
   )
   where
     initCmd = Init
@@ -289,6 +295,20 @@ onRegenerate = do
   writeFile path flakeNix
   putStrLn $ "Regenerated " ++ path
 
+-- | Write a GitHub Actions CI workflow to the project.
+onGenCi :: Bool -> Bool -> IO ()
+onGenCi pages cache = do
+  root <- getProjectRoot
+  let dir = root </> ".github" </> "workflows"
+      path = dir </> "ci.yml"
+  exists <- doesFileExist path
+  if exists
+    then putStrLn $ path ++ " already exists; not overwriting."
+    else do
+      createDirectoryIfMissing True dir
+      writeFile path (ciYml pages cache)
+      putStrLn $ "Wrote " ++ path
+
 main :: IO ()
 main = do
   setLocaleEncoding utf8
@@ -300,6 +320,8 @@ main = do
     AgdaLib2Nix path -> onAgdaLib2Nix path
 
     Regenerate -> onRegenerate
+
+    GenCi pages cache -> onGenCi pages cache
 
     Debug -> onDebug
 

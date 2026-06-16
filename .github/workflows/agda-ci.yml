@@ -1,0 +1,53 @@
+# Reusable CI workflow for pagda projects.
+name: pagda CI
+
+on:
+  workflow_call:
+    inputs:
+      pages:
+        description: Build the documentation and deploy it to GitHub Pages.
+        type: boolean
+        default: false
+      cache:
+        description: Cache the Nix store via the GitHub Actions cache.
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: WhatisRT/Pagda/.github/actions/setup@main
+        with:
+          cache: ${{ inputs.cache }}
+      - name: Type-check the library
+        run: nix build .#default -L
+
+  # Build the documentation and publish it to GitHub Pages on the default branch
+  # (only when the caller passes pages: true). The caller must grant pages/
+  # id-token write permissions and set the repository's Pages source to "GitHub
+  # Actions".
+  docs:
+    if: inputs.pages && github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    needs: check
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: WhatisRT/Pagda/.github/actions/setup@main
+        with:
+          cache: ${{ inputs.cache }}
+      - name: Build the documentation
+        run: nix build .#docs -L
+      - name: Prepare the Pages artifact
+        run: cp -rL --no-preserve=mode,ownership result public
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - id: deployment
+        uses: actions/deploy-pages@v4

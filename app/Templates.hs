@@ -90,6 +90,26 @@ testAgda = unlines
   , "unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])"
   ]
 
+ciYml :: Bool -> Bool -> String
+ciYml pages cache = unlines $
+     [ "name: CI"
+     , ""
+     , "on: [push, pull_request]"
+     , ""
+     , "jobs:"
+     , "  pagda:"
+     ]
+  ++ (if pages then
+       [ "    permissions:"
+       , "      contents: read"
+       , "      pages: write"
+       , "      id-token: write"
+       ]
+     else [])
+  ++ [ "    uses: WhatisRT/Pagda/.github/workflows/agda-ci.yml@main" ]
+  ++ (let inputs = [ "pages: true" | pages ] ++ [ "cache: true" | cache ]
+      in if null inputs then [] else "    with:" : map ("      " ++) inputs)
+
 substitute :: String -> String -> String -> String
 substitute old new s = go s
   where
