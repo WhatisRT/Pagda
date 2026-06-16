@@ -17,7 +17,7 @@ flakeNix = unlines
   , "      inputs.nixpkgs.follows = \"nixpkgs\";"
   , "    };"
   , ""
-  , "    pagda.url = \"github:WhatisRT/Pagda\";"
+  , "    pagda.url = \"github:WhatisRT/pagda\";"
   , "  };"
   , ""
   , "  outputs ="
@@ -106,7 +106,7 @@ ciYml pages cache = unlines $
        , "      id-token: write"
        ]
      else [])
-  ++ [ "    uses: WhatisRT/Pagda/.github/workflows/agda-ci.yml@main" ]
+  ++ [ "    uses: WhatisRT/pagda/.github/workflows/agda-ci.yml@main" ]
   ++ (let inputs = [ "pages: true" | pages ] ++ [ "cache: true" | cache ]
       in if null inputs then [] else "    with:" : map ("      " ++) inputs)
 

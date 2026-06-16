@@ -29,7 +29,7 @@ unquoteDecl DecEq-Test = derive-DecEq ((quote Test , DecEq-Test) ∷ [])
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    pagda.url = "github:WhatisRT/Pagda";
+    pagda.url = "github:WhatisRT/pagda";
   };
 
   outputs =

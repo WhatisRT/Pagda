@@ -17,7 +17,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: WhatisRT/Pagda/.github/actions/setup@main
+      - uses: WhatisRT/pagda/.github/actions/setup@main
         with:
           cache: ${{ inputs.cache }}
       - name: Type-check the library
@@ -38,7 +38,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: WhatisRT/Pagda/.github/actions/setup@main
+      - uses: WhatisRT/pagda/.github/actions/setup@main
         with:
           cache: ${{ inputs.cache }}
       - name: Build the documentation

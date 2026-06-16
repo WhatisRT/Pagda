@@ -15,7 +15,7 @@ To see the list of supported commands, run `pagda help`.
 At the moment, the only supported installation method is via Nix. With flakes enabled you can run:
 
 ```
-nix profile add github:WhatisRT/Pagda  # install pagda onto your PATH
+nix profile add github:WhatisRT/pagda  # install pagda onto your PATH
 ```
 
 This builds pagda from source on first use. A prebuilt binary cache may be added later.
@@ -23,14 +23,14 @@ This builds pagda from source on first use. A prebuilt binary cache may be added
 If you already have installed pagda and want to update, run:
 
 ```
-nix profile upgrade --refresh Pagda
+nix profile upgrade --refresh pagda
 ```
 
 To pull pagda into a flake / NixOS / home-manager configuration, add it as an input and use the overlay:
 
 ```nix
 {
-  inputs.pagda.url = "github:WhatisRT/Pagda";
+  inputs.pagda.url = "github:WhatisRT/pagda";
   # in your nixpkgs config:
   #   overlays = [ pagda.overlays.default ];
   # then reference pkgs.pagda (e.g. in environment.systemPackages).

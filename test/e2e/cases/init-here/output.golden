@@ -35,7 +35,7 @@ include: .
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    pagda.url = "github:WhatisRT/Pagda";
+    pagda.url = "github:WhatisRT/pagda";
   };
 
   outputs =

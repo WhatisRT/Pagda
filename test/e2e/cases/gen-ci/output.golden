@@ -9,7 +9,7 @@ on: [push, pull_request]
 
 jobs:
   pagda:
-    uses: WhatisRT/Pagda/.github/workflows/agda-ci.yml@main
+    uses: WhatisRT/pagda/.github/workflows/agda-ci.yml@main
 === file: flake.nix ===
 # project root marker
 { }
