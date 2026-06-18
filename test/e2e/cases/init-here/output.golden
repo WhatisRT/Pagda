@@ -28,8 +28,6 @@ include: .
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
 
-    flake-utils.url = "github:numtide/flake-utils";
-
     agda-nix = {
       url = "github:input-output-hk/agda.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -38,47 +36,7 @@ include: .
     pagda.url = "github:WhatisRT/pagda";
   };
 
-  outputs =
-    inputs@{
-      self,
-        nixpkgs,
-        flake-utils,
-        pagda,
-        ...
-    }:
-      flake-utils.lib.eachDefaultSystem (
-        system:
-        let
-          pkgs = import nixpkgs {
-            inherit system;
-            overlays = [
-              inputs.agda-nix.overlays.default
-            ];
-          };
-
-          # The library derivation is derived from the .agda-lib file. An
-          # optional pagda.nix can pin/add dependencies (overlay), customize
-          # the build (overrideAttrs), and pick a documentation backend (docs).
-          pagdaNix =
-            if builtins.pathExists ./pagda.nix
-            then import ./pagda.nix { inherit pkgs; pagda = pagda.lib.${system}; }
-            else { };
-
-          default = pagda.lib.${system}.callAgdaLib2nix {
-            agdaPackages = pkgs.agdaPackages;
-            src = ./.;
-            overlay = pagdaNix.overlay or null;
-            overrideAttrs = pagdaNix.overrideAttrs or (_: { });
-          };
-
-          docs = (pagdaNix.docs or (pagda.lib.${system}.docBackends.enhancedHtml { })) default;
-        in
-          {
-            packages = {
-              inherit default docs;
-              agda = pkgs.agdaPackages.agda.withPackages
-                (builtins.filter (p: p ? isAgdaDerivation) default.buildInputs);
-            };
-          }
-      );
+  # The build logic lives in pagda (lib.mkFlake), so this file stays a thin
+  # caller: bump the pagda input to pick up improvements.
+  outputs = inputs: inputs.pagda.lib.mkFlake { inherit inputs; src = ./.; };
 }

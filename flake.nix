@@ -37,22 +37,34 @@
         pagda = import ./default.nix { pkgs = final; };
       };
 
-      # callAgdaLib2nix builds an Agda library derivation straight from its
-      # .agda-lib file (the callCabal2nix analogue).
-      lib = forAllSystems (pkgs: {
-        callAgdaLib2nix = import ./nix/callAgdaLib2nix.nix {
-          inherit pkgs;
-          pagda = import ./default.nix { inherit pkgs; };
-        };
-        docBackends = rec {
-          html = import ./nix/docBackends/html.nix { inherit pkgs; };
-          enhancedHtml = import ./nix/docBackends/enhancedHtml.nix {
-            inherit pkgs;
-            htmlBackend = html;
-            agdaDocs = import ./nix/agda-web-docs-lib.nix { inherit pkgs; };
+      # Per-system helpers: callAgdaLib2nix builds an Agda library derivation
+      # straight from its .agda-lib file (the callCabal2nix analogue), and
+      # docBackends are the documentation builders. mkFlake (system-agnostic)
+      # assembles a whole project's flake outputs from these; generated project
+      # flakes delegate to it.
+      lib =
+        let
+          perSystem = forAllSystems (pkgs: {
+            callAgdaLib2nix = import ./nix/callAgdaLib2nix.nix {
+              inherit pkgs;
+              pagda = import ./default.nix { inherit pkgs; };
+            };
+            docBackends = rec {
+              html = import ./nix/docBackends/html.nix { inherit pkgs; };
+              enhancedHtml = import ./nix/docBackends/enhancedHtml.nix {
+                inherit pkgs;
+                htmlBackend = html;
+                agdaDocs = import ./nix/agda-web-docs-lib.nix { inherit pkgs; };
+              };
+            };
+          });
+        in
+        perSystem // {
+          mkFlake = import ./nix/mkFlake.nix {
+            pagdaLib = perSystem;
+            inherit systems;
           };
         };
-      });
 
       # `nix flake check` builds pagda and runs its test suites,
       # including the end-to-end tests in test/e2e.
