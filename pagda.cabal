@@ -26,6 +26,8 @@ executable pagda
     default-language: GHC2021
     other-modules:    AgdaLib
                     , Templates
+                    , Paths_pagda
+    autogen-modules:  Paths_pagda
 
 test-suite e2e
     import:             warnings

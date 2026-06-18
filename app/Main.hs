@@ -14,6 +14,8 @@ import Control.Monad (when)
 import Data.Char (toLower)
 import Data.List (intercalate, sort)
 import Data.Maybe (isJust)
+import Data.Version (showVersion)
+import Paths_pagda (version)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Control.Exception (catch, IOException, SomeException, fromException, throwIO, displayException)
@@ -82,7 +84,9 @@ pagdaParser cfg = subparser
         <> help "File to check and/or flags to pass to agda"))
 
 parserInfo :: ParserInfo (Config, PagdaOpts)
-parserInfo = info ((,) <$> configParser <*> pagdaParser configParser <**> helper)
+parserInfo = info
+  ( (,) <$> configParser <*> pagdaParser configParser
+    <**> simpleVersioner ("pagda " ++ showVersion version) <**> helper )
   $ fullDesc <> progDesc "Pagda - Agda project build tool using Nix"
 
 parseUseUntracked :: String -> Maybe UseUntracked
