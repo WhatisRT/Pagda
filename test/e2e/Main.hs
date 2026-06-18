@@ -38,7 +38,7 @@ import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Directory.Extra
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (ExitCode (..), die)
-import System.FilePath (makeRelative, searchPathSeparator, splitDirectories, (</>))
+import System.FilePath (makeRelative, searchPathSeparator, splitDirectories, takeDirectory, (</>))
 import System.IO (readFile')
 import System.Process (CreateProcess (..), proc, readCreateProcessWithExitCode)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -113,21 +113,28 @@ render exitN out err files = unlines . concat $
       ++ ["\\ no newline at end" | not (null body) && last body /= '\n']
 
 -- | Environment for the child processes: isolated $HOME, the case's
--- stub bin directory (if any) prepended to $PATH, and a UTF-8 locale
--- (pagda writes templates containing non-ASCII characters).
+-- stub bin directory (if any) prepended to $PATH, a UTF-8 locale (pagda
+-- writes templates containing non-ASCII characters), and a git ceiling at
+-- the sandbox so git cannot discover a repository above it.
 caseEnvironment :: FilePath -> FilePath -> IO [(String, String)]
 caseEnvironment caseDir homeDir = do
   extraPath <- ifM (doesDirectoryExist (caseDir </> "bin"))
     ((: []) <$> canonicalizePath (caseDir </> "bin"))
     (return [])
   baseEnv <- getEnvironment
+  -- The sandbox (parent of work/ and home/). Pinning GIT_CEILING_DIRECTORIES
+  -- here stops git from walking up past it, so a case with no `git init` runs
+  -- genuinely outside any repository even when the system temp dir happens to
+  -- live inside one (otherwise git would find that outer repo).
+  gitCeiling <- canonicalizePath (takeDirectory homeDir)
   let basePath = fromMaybe "" (lookup "PATH" baseEnv)
       path' = concatMap (++ [searchPathSeparator]) extraPath ++ basePath
       hasUtf8Locale = any (\k -> maybe False ("UTF-8" `isInfixOf`) (lookup k baseEnv))
                           ["LC_ALL", "LC_CTYPE", "LANG"]
       localeOverride = [("LC_ALL", "C.UTF-8") | not hasUtf8Locale]
-      overridden = "HOME" : "PATH" : map fst localeOverride
-  return $ ("HOME", homeDir) : ("PATH", path') : localeOverride
+      overridden = "HOME" : "PATH" : "GIT_CEILING_DIRECTORIES" : map fst localeOverride
+  return $ ("HOME", homeDir) : ("PATH", path')
+        : ("GIT_CEILING_DIRECTORIES", gitCeiling) : localeOverride
         ++ [(k, v) | (k, v) <- baseEnv, k `notElem` overridden]
 
 runSetup :: FilePath -> FilePath -> [(String, String)] -> IO ()

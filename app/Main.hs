@@ -5,15 +5,17 @@ module Main (main) where
 import Options.Applicative
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesFileExist, findExecutable, getHomeDirectory, getCurrentDirectory, listDirectory)
 import System.FilePath (takeDirectory, takeExtension, takeFileName, (</>))
-import System.Process (callProcess, readProcess)
-import System.IO (hFlush, stdout)
+import System.Process (rawSystem, readProcessWithExitCode)
+import System.IO (hFlush, hPutStrLn, stdout, stderr)
+import System.IO.Error (isUserError, ioeGetErrorString)
+import System.Exit (ExitCode(..), exitFailure, exitWith)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Control.Monad (when)
 import Data.Char (toLower)
 import Data.Maybe (isJust)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-import Control.Exception (catch, IOException)
+import Control.Exception (catch, IOException, SomeException, fromException, throwIO, displayException)
 
 import AgdaLib
 import Templates
@@ -115,10 +117,14 @@ configParser = Config
 hasNix :: IO Bool
 hasNix = isJust <$> findExecutable "nix"
 
+-- | Untracked files in the working tree. Outside a git repository this returns
+-- nothing rather than failing.
 getUntracked :: IO [String]
 getUntracked = do
-  result <- readProcess "git" ["ls-files", "--others"] ""
-  return $ filter (not . null) (lines result)
+  (code, out, _) <- readProcessWithExitCode "git" ["ls-files", "--others"] ""
+  return $ case code of
+    ExitSuccess -> filter (not . null) (lines out)
+    ExitFailure _ -> []
 
 hasUncommittedFiles :: IO Bool
 hasUncommittedFiles = do
@@ -212,11 +218,19 @@ buildDerivation cfg mderiv = do
     else return ""
   return $ prefix ++ ".#" ++ maybe "default" id mderiv
 
+-- | Run a process inheriting stdio. On a non-zero exit, exit pagda with the
+-- same code instead of throwing: the child (e.g. nix) has already reported the
+-- failure on stderr, so a wrapper exception would only add noise.
+runProcess_ :: String -> [String] -> IO ()
+runProcess_ cmd args = rawSystem cmd args >>= \case
+  ExitSuccess -> return ()
+  code -> exitWith code
+
 runNix :: String -> Maybe String -> Config -> IO ()
 runNix cmd mderiv cfg = do
   der <- buildDerivation cfg mderiv
   let args = ["--experimental-features", "nix-command flakes", cmd, der]
-  callProcess "nix" args
+  runProcess_ "nix" args
 
 -- | Prompt for a value, re-asking until the answer is non-empty.
 promptRequired :: String -> IO String
@@ -296,9 +310,9 @@ onCheck cfg agdaArgs = do
              , "develop", installable, "--profile", profile
              , "--command", "agda" ] ++ agdaArgs'
   createDirectoryIfMissing True (takeDirectory profile)
-  callProcess "nix" args
+  runProcess_ "nix" args
   -- Keep only the current generation, so old dev environments stop being GC roots.
-  callProcess "nix"
+  runProcess_ "nix"
     [ "--experimental-features", "nix-command flakes"
     , "profile", "wipe-history", "--profile", profile ]
 
@@ -332,7 +346,31 @@ onGenCi pages cache = do
       putStrLn $ "Wrote " ++ path
 
 main :: IO ()
-main = do
+main = runPagda `catch` topHandler
+
+-- | Report an uncaught error as a clean @pagda: <message>@
+-- and exit non-zero. ExitCode exceptions — raised by optparse-applicative for
+-- @--help@ and for argument-parsing errors — are re-thrown so its own exit
+-- behaviour is preserved.
+topHandler :: SomeException -> IO a
+topHandler e = case fromException e of
+  Just (ec :: ExitCode) -> throwIO ec
+  Nothing -> do
+    hPutStrLn stderr ("pagda: " ++ cleanMessage e)
+    exitFailure
+  where
+    -- For IO errors (our `fail`s, missing/unreadable files, …) render the
+    -- bare exception — unwrapping the SomeException strips GHC's backtrace —
+    -- and drop the noisy "user error (…)" wrapper from our own `fail`s. Any
+    -- other (genuinely unexpected) exception keeps its backtrace as a bug hint.
+    cleanMessage ex = case fromException ex of
+      Just ioe
+        | isUserError ioe -> ioeGetErrorString ioe
+        | otherwise       -> displayException (ioe :: IOException)
+      Nothing -> displayException ex
+
+runPagda :: IO ()
+runPagda = do
   setLocaleEncoding utf8
   (cfg, opts) <- customExecParser (prefs showHelpOnEmpty) parserInfo
 

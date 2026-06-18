@@ -1,0 +1,10 @@
+exit code: 0
+=== stdout ===
+=== stderr ===
+=== file: Test.agda ===
+module Test where
+=== file: flake.nix ===
+# dummy flake for testing
+{ }
+=== file: nix-args.txt ===
+--experimental-features nix-command flakes build .#default
