@@ -28,6 +28,7 @@ data UseUntracked = UseUntrackedTrue | UseUntrackedFalse | UseUntrackedAsk
 data Config = Config
   { useUntracked :: UseUntracked
   , warnUntracked :: Bool
+  , quiet :: Bool
   }
 
 data PagdaOpts
@@ -50,7 +51,7 @@ pagdaParser cfg = subparser
   <> command "build" (info (Build <$> buildArg <**> helper)
       (progDesc "Build a project"))
   <> command "gen-agda" (info (pure GenAgda <**> helper)
-      (progDesc "Generate a symlink to agda"))
+      (progDesc "Build agda (with the project's dependencies) and link it at .pagda/agda"))
   <> command "shell" (info (Shell <$> buildArg <**> helper)
       (progDesc "Launch an interactive shell"))
   <> command "debug" (info (pure Debug <**> helper)
@@ -117,6 +118,10 @@ configParser = Config
       <> help "Warn if recommended files are untracked"
       <> value True
       <> showDefault
+      )
+  <*> switch
+      ( long "quiet"
+      <> help "Suppress pagda's informational output"
       )
 
 hasNix :: IO Bool
@@ -231,11 +236,30 @@ runProcess_ cmd args = rawSystem cmd args >>= \case
   ExitSuccess -> return ()
   code -> exitWith code
 
+-- | Extra nix flags implied by the config (currently just --quiet).
+nixFlags :: Config -> [String]
+nixFlags cfg = [ "--quiet" | quiet cfg ]
+
 runNix :: String -> Maybe String -> Config -> IO ()
 runNix cmd mderiv cfg = do
   der <- buildDerivation cfg mderiv
-  let args = ["--experimental-features", "nix-command flakes", cmd, der]
+  let args = ["--experimental-features", "nix-command flakes", cmd, der] ++ nixFlags cfg
   runProcess_ "nix" args
+
+-- | Build the project's agda (with its dependencies) and link it at a stable
+-- path, .pagda/agda, regardless of the working directory. The out-link is a GC
+-- root, so the agda survives `nix-collect-garbage`; tools can point at
+-- .pagda/agda/bin/agda without rebuilding or hunting for a result symlink.
+onGenAgda :: Config -> IO ()
+onGenAgda cfg = do
+  root <- getProjectRoot
+  installable <- buildDerivation cfg (Just "agda")
+  let link = root </> ".pagda" </> "agda"
+  createDirectoryIfMissing True (takeDirectory link)
+  runProcess_ "nix" $
+    [ "--experimental-features", "nix-command flakes", "build", installable
+    , "--out-link", link ] ++ nixFlags cfg
+  when (not (quiet cfg)) $ putStrLn $ "Linked agda at " ++ (link </> "bin" </> "agda")
 
 -- | Prompt for a value, re-asking until the answer is non-empty.
 promptRequired :: String -> IO String
@@ -318,14 +342,14 @@ onCheck cfg agdaArgs = do
   let profile = root </> ".pagda" </> "check-env"
       agdaArgs' = if null agdaArgs then ["--build-library"] else agdaArgs
       args = [ "--experimental-features", "nix-command flakes"
-             , "develop", installable, "--profile", profile
-             , "--command", "agda" ] ++ agdaArgs'
+             , "develop", installable, "--profile", profile ] ++ nixFlags cfg ++
+             [ "--command", "agda" ] ++ agdaArgs'
   createDirectoryIfMissing True (takeDirectory profile)
   runProcess_ "nix" args
   -- Keep only the current generation, so old dev environments stop being GC roots.
-  runProcess_ "nix"
+  runProcess_ "nix" $
     [ "--experimental-features", "nix-command flakes"
-    , "profile", "wipe-history", "--profile", profile ]
+    , "profile", "wipe-history", "--profile", profile ] ++ nixFlags cfg
 
 onAgdaLib2Nix :: FilePath -> IO ()
 onAgdaLib2Nix path = do
@@ -402,13 +426,11 @@ runPagda = do
         then putStrLn "Nix not found. Please install Nix before proceeding."
         else do
           cfg' <- adjustConfig cfg
-          if warnUntracked cfg'
-            then warnAboutUntrackedFiles
-            else return ()
+          when (warnUntracked cfg' && not (quiet cfg')) warnAboutUntrackedFiles
 
           case opts of
             Build mderiv -> runNix "build" mderiv cfg'
-            GenAgda -> runNix "build" (Just "agda") cfg'
+            GenAgda -> onGenAgda cfg'
             Shell mderiv -> runNix "develop" mderiv cfg'
             Check agdaArgs -> onCheck cfg' agdaArgs
             Doc -> runNix "build" (Just "docs") cfg'
