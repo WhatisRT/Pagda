@@ -66,15 +66,26 @@ those dependencies resolve by name against whatever `agdaPackages`
 provides (pinned, along with the rest of nixpkgs and agda.nix, by your
 `flake.lock`). For anything beyond that, add an optional `pagda.nix`
 next to it. It is a function of `{ pkgs, pagda }` returning an attribute
-set with these optional fields:
+set with these optional fields (`pagda` is pagda's per-system lib, also
+carrying this project's `default` and `agda` packages):
 
 - `overlay` — an overlay applied to `agdaPackages`, to **pin** a
   dependency to a particular version/source or to **add** one that
   `agdaPackages` does not provide.
 - `overrideAttrs` — an
   [`overrideAttrs`](https://nixos.org/manual/nixpkgs/stable/#sec-pkg-overrideAttrs)
-  function applied to the generated package (`gen` below) for metadata
-  or build tweaks.
+  function applied to the generated package (`gen` below) for build tweaks.
+- `meta` — package [`meta`](https://nixos.org/manual/nixpkgs/stable/#chap-meta)
+  attributes (description, license, homepage, …) merged into the library
+  package.
+- `nixpkgs` — `{ config, overlays }` for the nixpkgs import itself, to set
+  options like `config.allowUnfree = true` or to pin/patch **non-Agda**
+  tooling. These configure how `pkgs` is built, so they must not reference
+  `pkgs` (the agda dependency overlay above belongs in `overlay`).
+- `devShells` — an attribute set of dev shells, surfaced as the flake's
+  `devShells` (so `nix develop` and `pagda shell [name]` pick them up). A
+  `default` shell with agda and the project's dependencies is always
+  provided.
 
 ```nix
 # pagda.nix
@@ -94,13 +105,28 @@ set with these optional fields:
     });
   };
 
-  # Tweak the generated package.
+  # Library metadata.
+  meta = {
+    description = "My Agda library";
+    homepage = "https://example.com/my-lib";
+  };
+
+  # Configure the nixpkgs import (must not reference pkgs).
+  nixpkgs.config.allowUnfree = true;
+
+  # Other build tweaks on the generated package.
   overrideAttrs = gen: {
-    meta = gen.meta // { description = "My Agda library"; };
+    buildInputs = (gen.buildInputs or [ ]) ++ [ pkgs.cowsay ];
   };
 
   # Docs are offline by default; override e.g. to serve over HTTP with smaller footprint.
   docs = pagda.docBackends.enhancedHtml { offline = false; };
+
+  # Dev shells. `default` is used by `nix develop` / `pagda shell`.
+  devShells.default = pkgs.mkShell {
+    inputsFrom = [ pagda.default ];     # agda + the project's dependencies
+    packages = [ pkgs.cabal-install ];  # plus extra tools
+  };
 }
 ```
 
