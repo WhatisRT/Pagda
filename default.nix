@@ -10,7 +10,10 @@ let
     # The plain Setup.hs used by the nixpkgs builder does not put internal
     # build-tool-depends executables on PATH (cabal-install does), so point
     # the test runner at the freshly built pagda explicitly.
-    preCheck = "export PAGDA_BIN=dist/build/pagda/pagda";
+    preCheck = ''
+      export PAGDA_BIN=dist/build/pagda/pagda
+      export AGDACHECK_BIN=dist/build/agda-check/agda-check
+    '';
   });
 in
 # Lets `nix run` and `lib.getExe` resolve the binary unambiguously.

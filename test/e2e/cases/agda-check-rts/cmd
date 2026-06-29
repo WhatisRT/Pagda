@@ -1,0 +1,1 @@
++RTS -M6g -RTS --safe Foo.agda

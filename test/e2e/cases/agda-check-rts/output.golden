@@ -1,0 +1,10 @@
+exit code: 0
+=== stdout ===
+agda +RTS -M6g -RTS --safe Foo.agda
+=== stderr ===
+=== file: .pagda/agda/bin/agda ===
+#!/bin/sh
+echo "agda $@"
+=== file: flake.nix ===
+# dummy flake for testing
+{ }

@@ -5,13 +5,11 @@ module Main (main) where
 import Options.Applicative
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesFileExist, findExecutable, getHomeDirectory, getCurrentDirectory, listDirectory, removePathForcibly)
 import System.FilePath (takeDirectory, takeExtension, takeFileName, (</>))
-import System.Process (rawSystem, readProcessWithExitCode)
 import System.IO (hFlush, hPutStrLn, stdout, stderr)
 import System.IO.Error (isUserError, ioeGetErrorString)
-import System.Exit (ExitCode(..), exitFailure, exitWith)
+import System.Exit (ExitCode(..), exitFailure)
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Control.Monad (when)
-import Data.Char (toLower)
 import Data.List (intercalate, isPrefixOf, sort)
 import Data.Maybe (isJust)
 import Data.Version (showVersion)
@@ -22,19 +20,14 @@ import Control.Exception (catch, IOException, SomeException, fromException, thro
 
 import AgdaLib
 import Templates
-
-data UseUntracked = UseUntrackedTrue | UseUntrackedFalse | UseUntrackedAsk
-
-data Config = Config
-  { useUntracked :: UseUntracked
-  , warnUntracked :: Bool
-  , quiet :: Bool
-  }
+import Pagda
+  ( UseUntracked(..), Config(..), getProjectRoot, getUntracked
+  , buildDerivation, runProcess_, nixFlags, genAgda )
 
 data PagdaOpts
   = Init (Maybe String) (Maybe FilePath) Bool Bool
   | Build (Maybe String)
-  | GenAgda
+  | GenAgda Bool
   | Shell (Maybe String)
   | AgdaLib2Nix FilePath
   | Regenerate
@@ -51,7 +44,8 @@ pagdaParser cfg = subparser
       (progDesc "Initialize a project (use --existing to add pagda to an existing one)"))
   <> command "build" (info (Build <$> buildArg <**> helper)
       (progDesc "Build a project"))
-  <> command "gen-agda" (info (pure GenAgda <**> helper)
+  <> command "gen-agda" (info
+      (GenAgda <$> switch (long "print-path" <> help "Print the path to the agda binary on stdout") <**> helper)
       (progDesc "Build agda (with the project's dependencies) and link it at .pagda/agda"))
   <> command "shell" (info (Shell <$> buildArg <**> helper)
       (progDesc "Launch an interactive shell"))
@@ -130,20 +124,6 @@ configParser = Config
 hasNix :: IO Bool
 hasNix = isJust <$> findExecutable "nix"
 
--- | Untracked files in the working tree, honoring .gitignore. Outside
--- a git repository this returns nothing rather than failing.
-getUntracked :: IO [String]
-getUntracked = do
-  (code, out, _) <- readProcessWithExitCode "git" ["ls-files", "--others", "--exclude-standard"] ""
-  return $ case code of
-    ExitSuccess -> filter (not . null) (lines out)
-    ExitFailure _ -> []
-
-hasUncommittedFiles :: IO Bool
-hasUncommittedFiles = do
-  untracked <- getUntracked
-  return $ not (null untracked)
-
 warnAboutUntrackedFiles :: IO ()
 warnAboutUntrackedFiles = do
   untracked <- getUntracked
@@ -151,20 +131,6 @@ warnAboutUntrackedFiles = do
   if null warns
     then return ()
     else putStrLn $ "The following files which are recommended to be part of your repository are untracked:\n  " ++ unwords warns
-
-getProjectRoot :: IO FilePath
-getProjectRoot = do
-  current <- getCurrentDirectory
-  go current
-  where
-    go :: FilePath -> IO FilePath
-    go dir = do
-      exists <- doesFileExist (dir </> "flake.nix")
-      if exists
-        then return dir
-        else case takeDirectory dir of
-          parent | parent == dir -> fail "Unable to find project root (no flake.nix found)"
-                 | otherwise -> go parent
 
 parseConfig :: FilePath -> IO (HashMap String String)
 parseConfig path = do
@@ -211,58 +177,20 @@ adjustConfig cfg = do
 getHomeDir :: IO FilePath
 getHomeDir = getHomeDirectory
 
-getUseUntracked :: Config -> IO Bool
-getUseUntracked cfg = case useUntracked cfg of
-  UseUntrackedTrue -> return True
-  UseUntrackedFalse -> return False
-  UseUntrackedAsk -> do
-    putStr "Do you want to use untracked files for this build? [y/n]: "
-    System.IO.hFlush stdout
-    reply <- getLine
-    return $ map toLower reply `elem` ["y", "yes"]
-
-buildDerivation :: Config -> Maybe String -> IO String
-buildDerivation cfg mderiv = do
-  hasUncommitted <- hasUncommittedFiles
-  prefix <- if hasUncommitted
-    then do
-      useUntrackedFlag <- getUseUntracked cfg
-      return $ if useUntrackedFlag then "path:" else ""
-    else return ""
-  return $ prefix ++ ".#" ++ maybe "default" id mderiv
-
--- | Run a process inheriting stdio. On a non-zero exit, exit pagda with the
--- same code instead of throwing: the child (e.g. nix) has already reported the
--- failure on stderr, so a wrapper exception would only add noise.
-runProcess_ :: String -> [String] -> IO ()
-runProcess_ cmd args = rawSystem cmd args >>= \case
-  ExitSuccess -> return ()
-  code -> exitWith code
-
--- | Extra nix flags implied by the config (currently just --quiet).
-nixFlags :: Config -> [String]
-nixFlags cfg = [ "--quiet" | quiet cfg ]
-
 runNix :: String -> Maybe String -> Config -> IO ()
 runNix cmd mderiv cfg = do
   der <- buildDerivation cfg mderiv
   let args = ["--experimental-features", "nix-command flakes", cmd, der] ++ nixFlags cfg
   runProcess_ "nix" args
 
--- | Build the project's agda (with its dependencies) and link it at a stable
--- path, .pagda/agda, regardless of the working directory. The out-link is a GC
--- root, so the agda survives `nix-collect-garbage`; tools can point at
--- .pagda/agda/bin/agda without rebuilding or hunting for a result symlink.
-onGenAgda :: Config -> IO ()
-onGenAgda cfg = do
-  root <- getProjectRoot
-  installable <- buildDerivation cfg (Just "agda")
-  let link = root </> ".pagda" </> "agda"
-  createDirectoryIfMissing True (takeDirectory link)
-  runProcess_ "nix" $
-    [ "--experimental-features", "nix-command flakes", "build", installable
-    , "--out-link", link ] ++ nixFlags cfg
-  when (not (quiet cfg)) $ putStrLn $ "Linked agda at " ++ (link </> "bin" </> "agda")
+-- | Build the project's agda via 'genAgda' and either print its path (machine
+-- readable, with --print-path) or report where it was linked.
+onGenAgda :: Config -> Bool -> IO ()
+onGenAgda cfg printPath = do
+  agdaBin <- genAgda cfg
+  if printPath
+    then putStrLn agdaBin
+    else when (not (quiet cfg)) $ putStrLn $ "Linked agda at " ++ agdaBin
 
 -- | Prompt for a value, re-asking until the answer is non-empty.
 promptRequired :: String -> IO String
@@ -450,7 +378,7 @@ runPagda = do
 
           case opts of
             Build mderiv -> runNix "build" mderiv cfg'
-            GenAgda -> onGenAgda cfg'
+            GenAgda printPath -> onGenAgda cfg' printPath
             Shell mderiv -> runNix "develop" mderiv cfg'
             Check agdaArgs -> onCheck cfg' agdaArgs
             Doc -> runNix "build" (Just "docs") cfg'

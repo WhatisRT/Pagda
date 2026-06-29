@@ -130,6 +130,15 @@ carrying this project's `default` and `agda` packages):
 }
 ```
 
+## Editor integration
+
+Pagda has a companion `agda-check` executable that can be used as the
+`agda` program for editor integrations like Emacs `agda2-mode`:
+
+```elisp
+(setq agda2-program-name "agda-check")
+```
+
 ## Documentation
 
 `pagda doc` builds documentation for the project. It is exposed as the

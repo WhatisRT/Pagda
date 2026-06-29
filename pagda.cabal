@@ -26,8 +26,24 @@ executable pagda
     default-language: GHC2021
     other-modules:    AgdaLib
                     , Templates
+                    , Pagda
                     , Paths_pagda
     autogen-modules:  Paths_pagda
+
+executable agda-check
+    import:           warnings
+    main-is:          Main.hs
+    hs-source-dirs:   agda-check, app
+    other-modules:    Pagda
+    build-depends:    base >=4.18 && <5
+                    , directory
+                    , filepath
+                    , process
+                    , unix
+    -- Don't let agda-check's own RTS consume `+RTS ... -RTS`; pass them through
+    -- as ordinary arguments so they reach the underlying agda.
+    ghc-options:      -rtsopts=ignoreAll
+    default-language: GHC2021
 
 test-suite e2e
     import:             warnings
@@ -43,7 +59,7 @@ test-suite e2e
                       , tasty
                       , tasty-golden
                       , text
-    build-tool-depends: pagda:pagda
+    build-tool-depends: pagda:pagda, pagda:agda-check
     default-language:   GHC2021
 
 test-suite regression

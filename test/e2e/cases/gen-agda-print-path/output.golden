@@ -1,0 +1,14 @@
+exit code: 0
+=== stdout ===
+$TESTDIR/.pagda/agda/bin/agda
+=== stderr ===
+=== file: Test.agda ===
+module Test where
+=== file: flake.nix ===
+# dummy flake for testing
+{ }
+=== file: nix-args.txt ===
+--experimental-features nix-command flakes build .#agda --out-link $TESTDIR/.pagda/agda
+=== file: pagda.nix ===
+# project root marker used by pagda
+{ agdaPackages }: { }

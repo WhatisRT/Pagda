@@ -1,0 +1,8 @@
+#!/bin/sh
+link=""; prev=""
+for a in "$@"; do [ "$prev" = "--out-link" ] && link="$a"; prev="$a"; done
+[ -n "$link" ] && {
+  mkdir -p "$link/bin"
+  printf '#!/bin/sh\necho "agda $@"\n' > "$link/bin/agda"
+  chmod +x "$link/bin/agda"
+}

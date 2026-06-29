@@ -50,10 +50,11 @@ main = do
   setLocaleEncoding utf8
   casesDir <- fromMaybe ("test" </> "e2e" </> "cases") <$> lookupEnv "PAGDA_E2E_CASES"
   pagdaBin <- findPagda
+  agdaCheckBin <- findAgdaCheck
   names <- listDirectory casesDir
     >>= filterM (\n -> doesDirectoryExist (casesDir </> n))
   defaultMain $ testGroup "pagda e2e"
-    [caseTest pagdaBin (casesDir </> name) name | name <- sort names]
+    [caseTest pagdaBin agdaCheckBin (casesDir </> name) name | name <- sort names]
 
 findPagda :: IO FilePath
 findPagda = lookupEnv "PAGDA_BIN" >>= \mbin -> case mbin of
@@ -61,17 +62,30 @@ findPagda = lookupEnv "PAGDA_BIN" >>= \mbin -> case mbin of
   Nothing -> findExecutable "pagda"
     >>= maybe (die "pagda executable not found on PATH (set PAGDA_BIN to override)") return
 
-caseTest :: FilePath -> FilePath -> String -> TestTree
-caseTest pagdaBin caseDir name =
-  goldenVsStringDiff name diffCmd (caseDir </> "output.golden") (runCase pagdaBin caseDir name)
+-- | The agda-check executable, if available (AGDACHECK_BIN or on PATH). Only
+-- cases whose `program` is "agda-check" need it.
+findAgdaCheck :: IO (Maybe FilePath)
+findAgdaCheck = lookupEnv "AGDACHECK_BIN" >>= \menv -> case menv of
+  Just p -> Just <$> canonicalizePath p
+  Nothing -> findExecutable "agda-check"
+
+caseTest :: FilePath -> Maybe FilePath -> FilePath -> String -> TestTree
+caseTest pagdaBin agdaCheckBin caseDir name =
+  goldenVsStringDiff name diffCmd (caseDir </> "output.golden")
+    (runCase pagdaBin agdaCheckBin caseDir name)
   where
     diffCmd ref new = ["diff", "-u", ref, new]
 
--- | Run one case in a fresh sandbox and render the outcome as the
--- golden manifest.
-runCase :: FilePath -> FilePath -> String -> IO ByteString
-runCase pagdaBin caseDir name = do
+-- | Run one case in a fresh sandbox and render the outcome as the golden
+-- manifest. A case's optional `program` file picks the executable to run
+-- ("pagda", the default, or "agda-check").
+runCase :: FilePath -> Maybe FilePath -> FilePath -> String -> IO ByteString
+runCase pagdaBin agdaCheckBin caseDir name = do
   cmdArgs <- words <$> readFile' (caseDir </> "cmd")
+  program <- readProgram caseDir
+  bin <- case program of
+    "agda-check" -> maybe (die "agda-check executable not found (set AGDACHECK_BIN)") return agdaCheckBin
+    _ -> return pagdaBin
   tmp <- getTemporaryDirectory
   let sandbox = tmp </> "pagda-e2e" </> name
       workDir = sandbox </> "work"
@@ -88,7 +102,7 @@ runCase pagdaBin caseDir name = do
   runSetup caseDir workDir env'
   stdinContents <- readFileIfExists (caseDir </> "stdin")
   (code, out, err) <- readCreateProcessWithExitCode
-    (proc pagdaBin cmdArgs) { cwd = Just workDir, env = Just env' }
+    (proc bin cmdArgs) { cwd = Just workDir, env = Just env' }
     stdinContents
   let exitN = case code of
         ExitSuccess -> 0
@@ -182,6 +196,12 @@ workFiles workDir = do
 
 readFileIfExists :: FilePath -> IO String
 readFileIfExists path = ifM (doesFileExist path) (readFile' path) (return "")
+
+-- | The program a case runs, from its optional `program` file ("pagda" default).
+readProgram :: FilePath -> IO String
+readProgram caseDir = do
+  let path = caseDir </> "program"
+  ifM (doesFileExist path) (filter (not . isSpace) <$> readFile' path) (return "pagda")
 
 copyTreeIfExists :: FilePath -> FilePath -> IO ()
 copyTreeIfExists src dst = do
