@@ -8,7 +8,7 @@ flakeNix = unlines
   , "  description = \"Pagda project\";"
   , ""
   , "  inputs = {"
-  , "    nixpkgs.url = \"github:NixOS/nixpkgs\";"
+  , "    nixpkgs.url = \"github:NixOS/nixpkgs/nixos-26.05\";"
   , ""
   , "    agda-nix = {"
   , "      url = \"github:input-output-hk/agda.nix\";"
