@@ -7,6 +7,10 @@ inputs:
   cache:
     description: Cache the Nix store via the GitHub Actions cache.
     default: "false"
+  gc-max-store-size:
+    description: >-
+      Trim the Nix store to this size before caching it.
+    default: "1G"
 
 runs:
   using: composite
@@ -23,7 +27,7 @@ runs:
       with:
         primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
         restore-prefixes-first-match: nix-${{ runner.os }}-
-        gc-max-store-size-linux: 1G
+        gc-max-store-size-linux: ${{ inputs.gc-max-store-size }}
         purge: true
         purge-prefixes: nix-${{ runner.os }}-
         purge-created: 0

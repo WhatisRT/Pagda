@@ -12,14 +12,29 @@ on:
         description: Cache the Nix store via the GitHub Actions cache.
         type: boolean
         default: false
+      working-directory:
+        description: >-
+          Directory holding the project's flake, relative to the repository
+          root. Set this for a flake that does not live at the repo root.
+        type: string
+        default: "."
+      gc-max-store-size:
+        description: >-
+          Trim the Nix store to this size before caching it.
+        type: string
+        default: "1G"
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: WhatisRT/pagda/.github/actions/setup@main
         with:
           cache: ${{ inputs.cache }}
+          gc-max-store-size: ${{ inputs.gc-max-store-size }}
       - name: Type-check the library
         run: nix build .#default -L
 
@@ -31,6 +46,9 @@ jobs:
     if: inputs.pages && github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
     needs: check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     concurrency:
       group: pages
       cancel-in-progress: false
@@ -41,10 +59,13 @@ jobs:
       - uses: WhatisRT/pagda/.github/actions/setup@main
         with:
           cache: ${{ inputs.cache }}
+          gc-max-store-size: ${{ inputs.gc-max-store-size }}
       - name: Build the documentation
         run: nix build .#docs -L
+      # Copy to a repo-root `public` so the upload path is the same regardless
+      # of working-directory.
       - name: Prepare the Pages artifact
-        run: cp -rL --no-preserve=mode,ownership result public
+        run: cp -rL --no-preserve=mode,ownership result "$GITHUB_WORKSPACE/public"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
