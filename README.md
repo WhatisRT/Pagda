@@ -168,6 +168,35 @@ default branch (set the repository's Pages source to "GitHub Actions").
 Pass `--cache` to cache the Nix store via the GitHub Actions cache, so
 reruns don't rebuild pagda/Agda from source.
 
+### Reusable workflow inputs
+
+The workflow supports a couple of options:
+
+| Input | Default | Purpose |
+|-------|---------|---------|
+| `pages` | `false` | Build the docs. |
+| `deploy` | `true` | Deploy docs to GitHub Pages. Set `false` to instead upload them as a plain `docs` artifact for your own workflow to compose into an existing site. |
+| `cache` | `false` | Cache the Nix store via the GitHub Actions cache. |
+| `working-directory` | `.` | Directory of the flake. |
+| `gc-max-store-size` | `1G` | Trim the Nix store to this size before caching. |
+
+To fold the docs into an **existing** Pages site instead of deploying them
+standalone, use `deploy: false` and consume the `docs` artifact yourself:
+
+```yaml
+jobs:
+  pagda:
+    uses: WhatisRT/pagda/.github/workflows/agda-ci.yml@main
+    with: { pages: true, deploy: false }
+  publish:
+    needs: pagda
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: docs, path: agda-docs }  # where the docs live in your site
+      # ... build the rest of your site and deploy it ...
+```
+
 ## Configuration options
 
 There are three ways to set options for Pagda: a global configuration file, a configuration file local to the project and command line options. The syntax for command line options is `--<name> <value>` and the syntax for configuration files is `name=value;`, each on a separate line.
