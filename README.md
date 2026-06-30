@@ -86,6 +86,9 @@ carrying this project's `default` and `agda` packages):
   `devShells` (so `nix develop` and `pagda shell [name]` pick them up). A
   `default` shell with agda and the project's dependencies is always
   provided.
+- `docsAssets` — `{ "dest/in/output" = source; }` of extra static files to
+  fold into the docs output (`pagda doc` / `.#docs`), e.g. a rendered
+  diagram. `source` may be a path or a nix derivation.
 
 ```nix
 # pagda.nix
@@ -121,6 +124,9 @@ carrying this project's `default` and `agda` packages):
 
   # Docs are offline by default; override e.g. to serve over HTTP with smaller footprint.
   docs = pagda.docBackends.enhancedHtml { offline = false; };
+
+  # Fold extra static files into the docs output.
+  docsAssets."diagram.svg" = ./diagram.svg;
 
   # Dev shells. `default` is used by `nix develop` / `pagda shell`.
   devShells.default = pkgs.mkShell {

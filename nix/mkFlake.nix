@@ -63,7 +63,18 @@ let
         builtins.filter (p: p ? isAgdaDerivation) default.buildInputs
       );
 
-      docs = (pagdaNix.docs or (plib.docBackends.enhancedHtml { })) default;
+      # An optional `docsAssets` ({ "dest/in/output" = source; }) folds extra
+      # static files into the docs output after the backend renders it.
+      docsAssets = pagdaNix.docsAssets or { };
+      renderedDocs = (pagdaNix.docs or (plib.docBackends.enhancedHtml { })) default;
+      docs =
+        if docsAssets == { }
+        then renderedDocs
+        else pkgs.runCommand renderedDocs.name { } ''
+          cp -r --no-preserve=mode ${renderedDocs} "$out"
+          ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (dest: source:
+            ''mkdir -p "$(dirname "$out/${dest}")" && cp -r ${source} "$out/${dest}"'') docsAssets)}
+        '';
     in
     {
       packages = { inherit default docs agda; };
